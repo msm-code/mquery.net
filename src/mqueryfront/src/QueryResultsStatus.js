@@ -154,6 +154,7 @@ class QueryResultsStatus extends Component {
             files_in_progress,
             files_errored,
             files_matched,
+            datasets_to_query,
         } = job;
 
         if (job && job.error) {
@@ -269,6 +270,15 @@ class QueryResultsStatus extends Component {
                 </div>
             );
         }
+        const toQueryBadge = datasets_to_query ? (
+            <span
+                className="badge badge-pill badge-primary"
+                data-toggle="tooltip"
+                title={datasets_to_query + " datasets left to query"}
+            >
+                {datasets_to_query}
+            </span>
+        ) : null;
         return (
             <div>
                 <div className="progress" style={{ marginTop: "55px" }}>
@@ -309,7 +319,7 @@ class QueryResultsStatus extends Component {
                         <span className={getBadgeClass(status)}>{status}</span>
                     </div>
                     <div className="col-md-3">
-                        Processed: <span>{processed}</span>
+                        Processed: <span>{processed} {toQueryBadge}</span>
                     </div>
                     <div className="col-md-3" style={{ textAlign: "right" }}>
                         <QueryTimer
