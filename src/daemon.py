@@ -16,6 +16,10 @@ from plugins import load_plugins
 
 METADATA_PLUGINS = load_plugins(config.PLUGINS)
 
+# HACK Avoid huge result sets spoiling the fun for everyone.
+# Hard limit is not perfect, but better than nothing. 20k files is arbitrary.
+MAX_RESULTS_PAR_JOB = 10000
+
 
 @cached(cache=LRUCache(maxsize=32), key=lambda db, job: job.key)
 def compile_yara(db: Database, job: JobId) -> Any:
@@ -234,6 +238,11 @@ class Agent:
         if j.status in final_statuses:
             return
 
+        if j.files_processed >= MAX_RESULTS_PAR_JOB:
+            # HACK don't process jobs with more than MAX_RESULTS_PAR_JOB.
+            self.db.cancel_job(j.userid, job)
+            return
+
         MIN_BATCH_SIZE = 10
         MAX_BATCH_SIZE = 500
 
@@ -250,6 +259,9 @@ class Agent:
 
         # Finally, always process at least MIN_BATCH_SIZE files.
         batch_size = max(batch_size, MIN_BATCH_SIZE)
+
+        # But never process more than MAX_RESULTS_PAR_JOB
+        batch_size = min(batch_size, MAX_RESULTS_PAR_JOB - j.files_processed)
 
         pop_result = self.ursa.pop(iterator, batch_size)
         if not pop_result.iterator_empty:
