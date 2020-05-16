@@ -25,6 +25,14 @@ services:
     depends_on:
       - "redis"
       - "ursadb"
+  scheduler:
+    build:
+      context: .
+      dockerfile: deploy/docker/scheduler.Dockerfile
+    links:
+    - redis
+    depends_on:
+      - "redis"
   ursadb:
     build:
       context: ursadb/

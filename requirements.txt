@@ -27,3 +27,4 @@ Werkzeug==0.15.3
 yara-python==3.8.1
 yaramod==3.5.0
 cachetools==4.1.0
+APScheduler==3.6.3

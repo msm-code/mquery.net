@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field
 
 class JobSchema(BaseModel):
     id: str
+    userid: str
     status: str
     rule_name: str
     rule_author: Optional[str]
@@ -19,6 +20,19 @@ class JobSchema(BaseModel):
     files_errored: int
     iterator: Optional[str]
     taint: Optional[str]
+
+
+class RateLimitSchema(BaseModel):
+    left: int
+    used: int
+    max: int
+    mode: str
+
+
+class RateLimitType(str, Enum):
+    concurrent_query = "concurrent_query"
+    file_download = "file_download"
+    yara_match = "yara_match"
 
 
 class JobsSchema(BaseModel):
