@@ -57,7 +57,7 @@ class QueryField extends Component {
             .catch((error) => {
                 let err = error.toString();
 
-                if (error.response) {
+                if (error.response && error.response.data.detail) {
                     err = error.response.data.detail;
                     // Dirty hack to parse error lines from the error message
                     // Error format: "Error at 4.2-7:" or  "Error at 5.1:"

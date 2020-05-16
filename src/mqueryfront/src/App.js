@@ -5,6 +5,7 @@ import QueryPage from "./QueryPage";
 import RecentPage from "./RecentPage";
 import StatusPage from "./StatusPage";
 import ConfigPage from "./ConfigPage";
+import RateLimitsPage from "./RateLimitsPage";
 import "./App.css";
 
 class App extends Component {
@@ -19,6 +20,11 @@ class App extends Component {
                     <Route exact path="/recent" component={RecentPage} />
                     <Route exact path="/config" component={ConfigPage} />
                     <Route exact path="/status" component={StatusPage} />
+                    <Route
+                        exact
+                        path="/ratelimits"
+                        component={RateLimitsPage}
+                    />
                 </Switch>
             </div>
         );

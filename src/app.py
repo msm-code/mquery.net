@@ -13,7 +13,7 @@ from zmq import Again
 from lib.yaraparse import parse_yara
 
 from util import mquery_version
-from db import Database, JobId
+from db import Database, JobId, QuotaExceededException
 from typing import Any, Callable, List, Union, Dict, Iterable
 import tempfile
 import zipfile
@@ -30,8 +30,10 @@ from schema import (
     StatusSchema,
     ConfigSchema,
     BackendStatusSchema,
+    RateLimitSchema,
     BackendStatusDatasetsSchema,
     AgentSchema,
+    RateLimitType,
 )
 
 db = Database(config.REDIS_HOST, config.REDIS_PORT)
@@ -53,7 +55,9 @@ async def add_headers(request: Request, call_next: Callable) -> Response:
 
 
 @app.get("/api/download", tags=["stable"])
-def download(job_id: str, ordinal: int, file_path: str) -> FileResponse:
+def download(
+    request: Request, job_id: str, ordinal: int, file_path: str
+) -> FileResponse:
     """
     Sends a file from given `file_path`. This path should come from
     results of one of the previous searches.
@@ -62,6 +66,9 @@ def download(job_id: str, ordinal: int, file_path: str) -> FileResponse:
     (index of the file in that job), to ensure that user can't download
     arbitrary files (for example "/etc/passwd").
     """
+    userid = request.client.host
+    db.bump_quota(userid, RateLimitType.file_download, 1)
+
     if not db.job_contains(JobId(job_id), ordinal, file_path):
         raise NotFound("No such file in result set.")
 
@@ -91,8 +98,10 @@ def zip_files(matches: List[Dict[Any, Any]]) -> Iterable[bytes]:
 
 
 @app.get("/api/download/files/{hash}")
-async def download_files(hash: str) -> StreamingResponse:
+async def download_files(request: Request, hash: str) -> StreamingResponse:
+    userid = request.client.host
     matches = db.get_job_matches(JobId(hash)).matches
+    db.bump_quota(userid, RateLimitType.file_download, len(matches))
     return StreamingResponse(zip_files(matches))
 
 
@@ -102,7 +111,7 @@ async def download_files(hash: str) -> StreamingResponse:
     tags=["stable"],
 )
 def query(
-    data: QueryRequestSchema = Body(...),
+    request: Request, data: QueryRequestSchema = Body(...),
 ) -> Union[QueryResponseSchema, List[ParseResponseSchema]]:
     """
     Starts a new search. Response will contain a new job ID that can be used
@@ -143,14 +152,18 @@ def query(
                 f"required plugins: {', '.join(missing)}",
             )
 
-    job = db.create_search_task(
-        rules[-1].name,
-        rules[-1].author,
-        data.raw_yara,
-        data.priority,
-        data.taint,
-        list(active_agents.keys()),
-    )
+    try:
+        job = db.create_search_task(
+            request.client.host,
+            rules[-1].name,
+            rules[-1].author,
+            data.raw_yara,
+            data.priority,
+            data.taint,
+            list(active_agents.keys()),
+        )
+    except QuotaExceededException as e:
+        raise HTTPException(status_code=400, detail=str(e))
     return QueryResponseSchema(query_hash=job.hash)
 
 
@@ -176,22 +189,25 @@ def job_info(job_id: str) -> JobSchema:
 
 
 @app.delete("/api/job/{job_id}", response_model=StatusSchema, tags=["stable"])
-def job_cancel(job_id: str) -> StatusSchema:
+def job_cancel(request: Request, job_id: str) -> StatusSchema:
     """
     Cancels the job with a provided `job_id`.
     """
-    db.cancel_job(JobId(job_id))
+    userid = request.client.host
+    db.cancel_job(userid, JobId(job_id))
     return StatusSchema(status="ok")
 
 
 @app.get("/api/job", response_model=JobsSchema, tags=["stable"])
-def job_statuses() -> JobsSchema:
+def job_statuses(request: Request) -> JobsSchema:
     """
     Returns statuses of all the jobs in the system. May take some time (> 1s)
     when there are a lot of them.
     """
+    userid = request.client.host
     jobs = [db.get_job(job) for job in db.get_job_ids()]
     jobs = sorted(jobs, key=lambda j: j.submitted, reverse=True)
+    jobs = [j for j in jobs if j.status != "removed" and j.userid == userid]
     return JobsSchema(jobs=jobs)
 
 
@@ -250,6 +266,25 @@ def config_edit(data: RequestConfigEdit = Body(...)) -> StatusSchema:
     """
     db.set_plugin_configuration_key(data.plugin, data.key, data.value)
     return StatusSchema(status="ok")
+
+
+@app.get(
+    "/api/ratelimits", response_model=List[RateLimitSchema], tags=["internal"]
+)
+def ratelimits(request: Request) -> List[RateLimitSchema]:
+    """
+    Returns a list of rate limits for the current user. Current user is
+    "authenticated" by IP currently.
+
+    This endpoint is not stable and may be subject to change in the future.
+    """
+    remote_ip = request.client.host
+
+    limitters = []
+    for limit_type in RateLimitType:
+        limitters.append(db.get_quota(remote_ip, limit_type))
+
+    return limitters
 
 
 @app.get("/api/backend", response_model=BackendStatusSchema, tags=["internal"])

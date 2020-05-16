@@ -1,12 +1,23 @@
 from collections import defaultdict
 from typing import List, Optional, Dict, Any
-from schema import JobSchema, MatchesSchema, AgentSpecSchema, ConfigSchema
+from schema import (
+    JobSchema,
+    MatchesSchema,
+    AgentSpecSchema,
+    ConfigSchema,
+    RateLimitSchema,
+    RateLimitType,
+)
 from time import time
 import json
 import random
 import string
 from redis import StrictRedis
 from enum import Enum
+
+
+class QuotaExceededException(RuntimeError):
+    pass
 
 
 class TaskType(Enum):
@@ -76,23 +87,26 @@ class Database:
         """ Gets IDs of all jobs in the database """
         return [JobId(key) for key in self.redis.keys("job:*")]
 
-    def cancel_job(self, job: JobId) -> None:
+    def cancel_job(self, userid: str, job: JobId) -> None:
         """ Sets the job status to cancelled """
         self.redis.hmset(
             job.key, {"status": "cancelled", "finished": int(time())}
         )
+        self.decrease_quota(userid, RateLimitType.concurrent_query, 1)
 
-    def fail_job(self, job: JobId, message: str) -> None:
+    def fail_job(self, userid: str, job: JobId, message: str) -> None:
         """ Sets the job status to failed. """
         self.redis.hmset(
             job.key,
             {"status": "failed", "error": message, "finished": int(time())},
         )
+        self.decrease_quota(userid, RateLimitType.concurrent_query, 1)
 
     def get_job(self, job: JobId) -> JobSchema:
         data = self.redis.hgetall(job.key)
         return JobSchema(
             id=job.hash,
+            userid=data.get("userid", "unknown"),
             status=data.get("status", "ERROR"),
             rule_name=data.get("rule_name", "ERROR"),
             rule_author=data.get("rule_author", None),
@@ -148,6 +162,7 @@ class Database:
 
     def create_search_task(
         self,
+        userid: str,
         rule_name: str,
         rule_author: str,
         raw_yara: str,
@@ -155,6 +170,8 @@ class Database:
         taint: Optional[str],
         agents: List[str],
     ) -> JobId:
+        self.bump_quota(userid, RateLimitType.concurrent_query, 1)
+
         job = JobId(
             "".join(
                 random.SystemRandom().choice(
@@ -165,6 +182,7 @@ class Database:
         )
         job_obj = {
             "status": "new",
+            "userid": userid,
             "rule_name": rule_name,
             "rule_author": rule_author,
             "raw_yara": raw_yara,
@@ -267,12 +285,13 @@ class Database:
         job_data = json.dumps({"job": job.key, "iterator": iterator})
         self.redis.rpush(f"agent:{agent_id}:queue-yara", job_data)
 
-    def agent_finish_job(self, job: JobId) -> None:
+    def agent_finish_job(self, userid: str, job: JobId) -> None:
         new_agents = self.redis.hincrby(job.key, "agents_left", -1)
         if new_agents <= 0:
             self.redis.hmset(
                 job.key, {"status": "done", "finished": int(time())}
             )
+            self.decrease_quota(userid, RateLimitType.concurrent_query, 1)
 
     def has_pending_search_tasks(self, agent_id: str, job: JobId) -> bool:
         return self.redis.llen(f"job-ds:{agent_id}:{job.hash}") == 0
@@ -352,3 +371,46 @@ class Database:
 
     def cache_store(self, key: str, value: str, expire: int) -> None:
         self.redis.setex(f"cached:{key}", expire, value)
+
+    def get_users_with_quota(self, mode: RateLimitType) -> List[str]:
+        result = []
+        for key in self.redis.keys(f"rate-limit:{mode.value}:*"):
+            result.append(key.split(":")[-1])
+        return result
+
+    def bump_quota(
+        self, userid: str, mode: RateLimitType, howmuch: int
+    ) -> None:
+        quota = self.get_quota(userid, mode)
+        if quota.used + howmuch > quota.max:
+            raise QuotaExceededException(f"Quota for {quota.mode} exceeded!")
+        self.redis.incrby(f"rate-limit:{mode}:{userid}", howmuch)
+
+    def decrease_quota(
+        self, userid: str, mode: RateLimitType, howmuch: int
+    ) -> None:
+        quota = self.get_quota(userid, mode)
+        new_quota = quota.used - howmuch
+        if new_quota <= 0:
+            self.redis.delete(f"rate-limit:{mode}:{userid}")
+        else:
+            self.redis.set(f"rate-limit:{mode}:{userid}", new_quota)
+
+    def get_quota_max(self, mode: RateLimitType) -> int:
+        return {
+            RateLimitType.yara_match: 100000,
+            RateLimitType.concurrent_query: 2,
+            RateLimitType.file_download: 10000,
+        }[mode]
+
+    def get_quota(self, userid: str, mode: RateLimitType) -> RateLimitSchema:
+        rate_limit_max = self.get_quota_max(mode)
+        rate_limit_value = int(
+            self.redis.get(f"rate-limit:{mode}:{userid}") or 0
+        )
+        return RateLimitSchema(
+            max=rate_limit_max,
+            left=rate_limit_max - rate_limit_value,
+            used=rate_limit_value,
+            mode=mode.value,
+        )

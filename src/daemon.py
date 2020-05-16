@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import logging
+from schema import RateLimitType
 import yara  # type: ignore
 import config
 import json
@@ -255,6 +256,9 @@ class Agent:
             # The job still have some files, put it back on the queue.
             self.db.agent_start_job(self.group_id, job, iterator)
         if pop_result.files:
+            self.db.bump_quota(
+                j.userid, RateLimitType.yara_match, len(pop_result.files)
+            )
             # If there are any files popped iterator, work on them
             self.__execute_yara(job, pop_result.files)
 
@@ -265,7 +269,7 @@ class Agent:
             and self.db.job_datasets_left(self.group_id, job) == 0
         ):
             # The job is over, work of this agent as done.
-            self.db.agent_finish_job(job)
+            self.db.agent_finish_job(j.userid, job)
 
     def __process_task(self, task: AgentTask) -> None:
         """Dispatches and executes the next incoming task.
@@ -310,8 +314,9 @@ class Agent:
                 self.__search_task(job)
             except Exception as e:
                 logging.exception("Failed to execute task.")
-                self.db.agent_finish_job(job)
-                self.db.fail_job(job, str(e))
+                jobobj = self.db.get_job(job)
+                self.db.agent_finish_job(jobobj.userid, job)
+                self.db.fail_job(jobobj.userid, job, str(e))
         elif task.type == TaskType.YARA:
             data = json.loads(task.data)
             job = JobId(data["job"])
@@ -322,8 +327,9 @@ class Agent:
                 self.__yara_task(job, iterator)
             except Exception as e:
                 logging.exception("Failed to execute task.")
-                self.db.agent_finish_job(job)
-                self.db.fail_job(job, str(e))
+                jobobj = self.db.get_job(job)
+                self.db.agent_finish_job(jobobj.userid, job)
+                self.db.fail_job(jobobj.userid, job, str(e))
         else:
             raise RuntimeError("Unsupported queue")
 
