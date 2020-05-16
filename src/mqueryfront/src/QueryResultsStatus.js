@@ -319,7 +319,10 @@ class QueryResultsStatus extends Component {
                         <span className={getBadgeClass(status)}>{status}</span>
                     </div>
                     <div className="col-md-3">
-                        Processed: <span>{processed} {toQueryBadge}</span>
+                        Processed:{" "}
+                        <span>
+                            {processed} {toQueryBadge}
+                        </span>
                     </div>
                     <div className="col-md-3" style={{ textAlign: "right" }}>
                         <QueryTimer
