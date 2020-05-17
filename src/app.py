@@ -152,9 +152,11 @@ def query(
                 f"required plugins: {', '.join(missing)}",
             )
 
+    is_public = "MQUERY_PUBLIC_RULE" in data.raw_yara
     try:
         job = db.create_search_task(
             request.client.host,
+            is_public,
             rules[-1].name,
             rules[-1].author,
             data.raw_yara,
@@ -204,10 +206,28 @@ def job_statuses(request: Request) -> JobsSchema:
     Returns statuses of all the jobs in the system. May take some time (> 1s)
     when there are a lot of them.
     """
+
     userid = request.client.host
+
+    def job_visible(job: JobSchema) -> bool:
+        if job.status == "removed":
+            # Don't show removed jobs.
+            return False
+        if userid == "127.0.0.1":
+            # To manage and remove offending jobs
+            return True
+        if job.is_public:
+            # Public jobs are visible for everyone
+            return True
+        if job.userid == userid:
+            # Creator of the job can always see it
+            return True
+        # For all the others, no luck
+        return False
+
     jobs = [db.get_job(job) for job in db.get_job_ids()]
     jobs = sorted(jobs, key=lambda j: j.submitted, reverse=True)
-    jobs = [j for j in jobs if j.status != "removed" and j.userid == userid]
+    jobs = [j for j in jobs if job_visible(j)]
     return JobsSchema(jobs=jobs)
 
 
@@ -360,6 +380,8 @@ def query_remove(job_id: str) -> StatusSchema:
 @app.get("/recent", include_in_schema=False)
 @app.get("/status", include_in_schema=False)
 @app.get("/query", include_in_schema=False)
+@app.get("/ratelimits", include_in_schema=False)
+@app.get("/about", include_in_schema=False)
 def serve_index_sub() -> FileResponse:
     return FileResponse("mqueryfront/build/index.html")
 

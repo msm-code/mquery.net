@@ -107,6 +107,7 @@ class Database:
         return JobSchema(
             id=job.hash,
             userid=data.get("userid", "unknown"),
+            is_public=data.get("public", True),  # true for legacy jobs
             status=data.get("status", "ERROR"),
             rule_name=data.get("rule_name", "ERROR"),
             rule_author=data.get("rule_author", None),
@@ -164,6 +165,7 @@ class Database:
     def create_search_task(
         self,
         userid: str,
+        is_public: bool,
         rule_name: str,
         rule_author: str,
         raw_yara: str,
@@ -184,6 +186,7 @@ class Database:
         job_obj = {
             "status": "new",
             "userid": userid,
+            "public": is_public,
             "rule_name": rule_name,
             "rule_author": rule_author,
             "raw_yara": raw_yara,
