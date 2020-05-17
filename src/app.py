@@ -155,7 +155,6 @@ def query(
     try:
         job = db.create_search_task(
             request.client.host,
-            False,
             rules[-1].name,
             rules[-1].author,
             data.raw_yara,
@@ -205,7 +204,6 @@ def job_statuses(request: Request) -> JobsSchema:
     Returns statuses of all the jobs in the system. May take some time (> 1s)
     when there are a lot of them.
     """
-
     userid = request.client.host
 
     def job_visible(job: JobSchema) -> bool:
@@ -215,7 +213,7 @@ def job_statuses(request: Request) -> JobsSchema:
         if userid == "127.0.0.1":
             # To manage and remove offending jobs
             return True
-        if job.is_public:
+        if job.userid == "unknown":
             # Public jobs are visible for everyone
             return True
         if job.userid == userid:
