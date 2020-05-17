@@ -103,7 +103,8 @@ class RateLimitsPage extends Component {
                                     </p>
                                     I've forked it and added rate limits to keep
                                     this service stable and available for
-                                    everyone.
+                                    everyone. I may increase them later. All
+                                    limits are per 24h and update every minute.
                                 </div>
                             </div>
                             {this.rateLimits()}
