@@ -152,11 +152,10 @@ def query(
                 f"required plugins: {', '.join(missing)}",
             )
 
-    is_public = "MQUERY_PUBLIC_RULE" in data.raw_yara
     try:
         job = db.create_search_task(
             request.client.host,
-            is_public,
+            False,
             rules[-1].name,
             rules[-1].author,
             data.raw_yara,
