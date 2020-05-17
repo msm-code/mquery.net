@@ -21,6 +21,7 @@ class JobSchema(BaseModel):
     iterator: Optional[str]
     taint: Optional[str]
     datasets_to_query: int
+    is_public: bool
 
 
 class RateLimitSchema(BaseModel):

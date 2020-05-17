@@ -6,6 +6,7 @@ import RecentPage from "./RecentPage";
 import StatusPage from "./StatusPage";
 import ConfigPage from "./ConfigPage";
 import RateLimitsPage from "./RateLimitsPage";
+import AboutPage from "./AboutPage";
 import "./App.css";
 
 class App extends Component {
@@ -25,6 +26,7 @@ class App extends Component {
                         path="/ratelimits"
                         component={RateLimitsPage}
                     />
+                    <Route exact path="/about" component={AboutPage} />
                 </Switch>
             </div>
         );

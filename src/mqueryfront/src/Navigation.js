@@ -47,6 +47,11 @@ class Navigation extends Component {
                                 Rate limits
                             </Link>
                         </li>
+                        <li className="nav-item">
+                            <Link className="nav-link" to={"/about"}>
+                                About
+                            </Link>
+                        </li>
                     </ul>
                     <ul className="navbar-nav navbar-right">
                         <li className="nav-item nav-right">
