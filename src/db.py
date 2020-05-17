@@ -406,9 +406,9 @@ class Database:
 
     def get_quota_max(self, mode: RateLimitType) -> int:
         return {
-            RateLimitType.yara_match: 100000,
+            RateLimitType.yara_match: 30000,
             RateLimitType.concurrent_query: 2,
-            RateLimitType.file_download: 10000,
+            RateLimitType.file_download: 3000,
         }[mode]
 
     def get_quota(self, userid: str, mode: RateLimitType) -> RateLimitSchema:
