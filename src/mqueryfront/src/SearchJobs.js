@@ -56,6 +56,14 @@ const SearchJobRow = (props) => {
         <ActionCancel onClick={onCancel} />
     );
 
+    const publicBadge = (
+        <span className="badge badge-info badge-sm">public</span>
+    );
+
+    const privateBadge = (
+        <span className="badge badge-success badge-sm">private</span>
+    );
+
     return (
         <tr>
             <td>
@@ -68,8 +76,8 @@ const SearchJobRow = (props) => {
                             to={"/query/" + id}
                             style={{ fontFamily: "monospace" }}
                         >
-                            {rule_name}
-                            {userid == "unknown" ? "(public)" : "(private)"}
+                            {rule_name}{" "}
+                            {userid == "unknown" ? publicBadge : privateBadge}
                         </Link>
                     </div>
                     <span className="ml-2">
