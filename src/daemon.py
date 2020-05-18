@@ -245,7 +245,7 @@ class Agent:
             return
 
         MIN_BATCH_SIZE = 10
-        MAX_BATCH_SIZE = 500
+        MAX_BATCH_SIZE = 200
 
         taken_files = j.files_processed + j.files_in_progress
 
