@@ -30,9 +30,10 @@ class AboutPage extends Component {
                 </li>
 
                 <li>
-                    By default user-uploader rules by are not visible to other
-                    users. I will not spy on the uploaded rules or steal them,
-                    but you should not trust me, so please{" "}
+                    By default{" "}
+                    <b>uploaded rules by are not visible to other users</b>. I
+                    will not spy on the uploaded rules or steal them, but you
+                    should not trust me, so please{" "}
                     <b>don't try any TLP;RED hunts</b>.
                 </li>
 

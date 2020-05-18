@@ -32,6 +32,7 @@ const SearchJobRowEmpty = () => {
 const SearchJobRow = (props) => {
     const {
         id,
+        userid,
         status,
         submitted,
         rule_name,
@@ -68,6 +69,7 @@ const SearchJobRow = (props) => {
                             style={{ fontFamily: "monospace" }}
                         >
                             {rule_name}
+                            {userid == "unknown" ? "(public)" : "(private)"}
                         </Link>
                     </div>
                     <span className="ml-2">
