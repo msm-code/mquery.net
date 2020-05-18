@@ -146,10 +146,6 @@ class DatabaseTopology extends Component {
             <ErrorBoundary error={this.state.error}>
                 <h2 className="text-center mq-bottom">
                     Topology
-                    <div class="btn-group pull-right">
-                        {compactButton}
-                        {reindexButton}
-                    </div>
                 </h2>
                 <div className="table-responsive">
                     <table className="table table-bordered table-topology">
