@@ -238,42 +238,6 @@ def config_list() -> List[ConfigSchema]:
     return db.get_plugins_config()
 
 
-@app.post("/api/index", response_model=StatusSchema, tags=["internal"])
-def reindex_files() -> StatusSchema:
-    """
-    Reindex files in the configured default directory.
-
-    There are no server-side checks to avoid indexing multiple times at the
-    same time, care should be taken when using it from user scripts.
-    This is also not very efficient for large datasets - take a look at
-    the documentation for indexing and `index.py` script to learn more.
-
-    This endpoint is not stable and may be subject to change in the future.
-    """
-    if config.INDEX_DIR is not None:
-        types = "[gram3, text4, wide8, hash4]"
-        db.broadcast_command(f'index "{config.INDEX_DIR}" with {types};')
-    return StatusSchema(status="ok")
-
-
-@app.post("/api/compact", response_model=StatusSchema, tags=["internal"])
-def compact_files() -> StatusSchema:
-    """
-    Broadcasts compcat command to all ursadb instances. This uses `compact all;`
-    subcommand (which is more intuitive because it ways compacts), except the
-    recommended `compact smart;` which ignores useless merges. Because of this,
-    and also because of lack of control, this it's not recommended for advanced
-    users - see documentation and `compactall.py` script to learn more.
-
-    This still won't merge datasets of different types or with different tags,
-    and will silently do nothing in such case.
-
-    This endpoint is not stable and may be subject to change in the future.
-    """
-    db.broadcast_command(f"compact all;")
-    return StatusSchema(status="ok")
-
-
 @app.post("/api/config/edit", response_model=StatusSchema, tags=["internal"])
 def config_edit(data: RequestConfigEdit = Body(...)) -> StatusSchema:
     """
