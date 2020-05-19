@@ -43,6 +43,11 @@ class Navigation extends Component {
                             </Link>
                         </li>
                         <li className="nav-item">
+                            <Link className="nav-link" to={"/status"}>
+                                Status
+                            </Link>
+                        </li>
+                        <li className="nav-item">
                             <Link className="nav-link" to={"/ratelimits"}>
                                 Rate limits
                             </Link>
