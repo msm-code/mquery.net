@@ -18,7 +18,7 @@ METADATA_PLUGINS = load_plugins(config.PLUGINS)
 
 # HACK Avoid huge result sets spoiling the fun for everyone.
 # Hard limit is not perfect, but better than nothing. 20k files is arbitrary.
-MAX_RESULTS_PAR_JOB = 10000
+MAX_RESULTS_PAR_JOB = 100000
 
 
 @cached(cache=LRUCache(maxsize=32), key=lambda db, job: job.key)
