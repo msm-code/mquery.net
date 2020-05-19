@@ -334,7 +334,9 @@ def serve_index(path: str) -> FileResponse:
 
 @app.delete("/api/query/{job_id}", response_model=StatusSchema)
 def query_remove(job_id: str) -> StatusSchema:
-    db.remove_query(JobId(job_id))
+    job = db.get_job(JobId(job_id))
+    if job.userid != "unknown":
+        db.remove_query(JobId(job_id))
     return StatusSchema(status="ok")
 
 

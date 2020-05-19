@@ -51,7 +51,9 @@ const SearchJobRow = (props) => {
     const submittedDate = new Date(submitted * 1000).toISOString();
 
     const actionBtn = isFinished ? (
-        <ActionRemove onClick={onRemove} />
+        userid == "unknown" ? null : (
+            <ActionRemove onClick={onRemove} />
+        )
     ) : (
         <ActionCancel onClick={onCancel} />
     );
