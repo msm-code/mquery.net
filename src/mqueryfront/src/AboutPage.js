@@ -26,7 +26,8 @@ class AboutPage extends Component {
                     There are some <a href="/ratelimits">ratelimits</a> to keep
                     the service stable. If for some reason they're not enough
                     for you, consider hosting mquery yourself or contact me if
-                    that's not possible.
+                    that's not possible. The server is a potato (second cheapest
+                    Hetzner storage server) so please don't kill it.
                 </li>
 
                 <li>
